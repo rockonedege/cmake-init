@@ -7,16 +7,26 @@ on:
     - feature/*
 
     paths:
-    - cmake-init/**
+    - "!cmake-init/templates/common/.github/**"
+    - "!cmake-init/templates/common/docs/**"
+    - "!cmake-init/templates/common/*.md"
+    - "!cmake-init/templates/common/.gitignore"
+    - "!cmake-init/templates/common/CMakeUserPresets.json"
     - .github/workflows/*
+    - cmake-init/**
 
   pull_request:
     branches:
     - develop
 
     paths:
-    - cmake-init/**
+    - "!cmake-init/templates/common/.github/**"
+    - "!cmake-init/templates/common/docs/**"
+    - "!cmake-init/templates/common/*.md"
+    - "!cmake-init/templates/common/.gitignore"
+    - "!cmake-init/templates/common/CMakeUserPresets.json"
     - .github/workflows/*
+    - cmake-init/**
 
 jobs:
   test:
@@ -26,11 +36,11 @@ jobs:
       fail-fast: false
 
       matrix:
-        job: [1, 2, 3, 4, 5, 6, 7, 8]
+        job: [1, 2, 3, 4, 5, 6, 7, 8, 9]
 
         pm: [none, conan, vcpkg]
 
-        os: [macos-latest, ubuntu-latest, windows-2022]
+        os: [macos-14, ubuntu-24.04, windows-2022]
 
         include:
         - { job: 1, type: "-s --examples", name: "Library (C++): shared", flag: "-D BUILD_SHARED_LIBS=YES" }
@@ -41,54 +51,55 @@ jobs:
         - { job: 6, type: "--c -s --examples", name: "Library (C): static", flag: "" }
         - { job: 7, type: "--c -h --examples", name: "Library (C): header-only", flag: "" }
         - { job: 8, type: "--c -e", name: "Executable (C)", flag: "" }
+        - { job: 9, type: "--c --std 17 -e", name: "Executable (C17)", flag: "" }
 
     name: "${{ matrix.name }} (${{ matrix.os }}) (PM: ${{ matrix.pm }})"
 
     runs-on: ${{ matrix.os }}
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
 
     - name: Install static analyzers
-      if: matrix.os == 'ubuntu-latest'
-      run: sudo apt-get install clang-tidy cppcheck -y -q
+      if: matrix.os == 'ubuntu-24.04'
+      run: >-
+        sudo apt-get install clang-tidy-18 cppcheck -y -q
 
-    - uses: actions/setup-python@v2
-      with: { python-version: "3.8" }
+        sudo update-alternatives --install
+        /usr/bin/clang-tidy clang-tidy
+        /usr/bin/clang-tidy-18 180
+
+    - uses: actions/setup-python@v5
+      with: { python-version: "3.12" }
 
     - name: Create project
       run: |
         python -m zipapp cmake-init -p "/usr/bin/env python3"
         python cmake-init.pyz ${{ matrix.type }} -p ${{ matrix.pm }} proj
 
-    - name: Test --vcpkg mode
-      working-directory: proj
-      run: |
-        python ../cmake-init.pyz --vcpkg shared -s
-        python ../cmake-init.pyz --vcpkg headeronly -h
-
     - name: Lint generated project
-      if: matrix.os == 'ubuntu-latest'
+      if: matrix.os == 'ubuntu-24.04'
       working-directory: proj
-      run: cmake -D FORMAT_COMMAND=clang-format-11 -P cmake/lint.cmake
+      run: cmake -D FORMAT_COMMAND=clang-format-18 -P cmake/lint.cmake
+
+    - name: Setup MultiToolTask
+      if: matrix.os == 'windows-2022'
+      run: |
+        Add-Content "$env:GITHUB_ENV" 'UseMultiToolTask=true'
+        Add-Content "$env:GITHUB_ENV" 'EnforceProcessCountAcrossBuilds=true'
 
     - name: Install Conan
       if: matrix.pm == 'conan'
       working-directory: proj
       shell: bash
-      run: |
-        pip3 install conan
-        conan profile new default --detect
-        if [ ${{ matrix.os }} = ubuntu-latest ]; then
-          conan profile update settings.compiler.libcxx=libstdc++11 default
-        fi
-        conan install . -if conan -b missing
+      run: bash < .github/scripts/conan-ci-setup.sh
 
     - name: Install vcpkg
       if: matrix.pm == 'vcpkg'
       uses: friendlyanon/setup-vcpkg@v1
       with:
-        committish: "5cf60186a241e84e8232641ee973395d4fde90e1"
+        committish: "d7112d1a4fb50410d3639f5f586972591d848beb"
+        cache-version: "2"
         ignore-reserve-cache-error: true
 
     - name: Configure
@@ -96,15 +107,15 @@ jobs:
       run: cmake -S proj "--preset=ci-$("${{ matrix.os }}".split("-")[0])"
         ${{ matrix.flag }}
 
+    - name: Setup PATH
+      if: matrix.os == 'windows-2022'
+      run: Add-Content "$env:GITHUB_PATH" "$(Get-Location)\proj\build\Release"
+
     - name: Build
       run: cmake --build proj/build --config Release
 
     - name: Install
       run: cmake --install proj/build --config Release --prefix proj/prefix
 
-    - name: Setup PATH
-      if: matrix.os == 'windows-2022' && matrix.pm != 'none'
-      run: Add-Content "$env:GITHUB_PATH" "$(Get-Location)\proj\build\Release"
-
     - name: Test
-      run: ctest --test-dir proj/build -C Release
+      run: ctest --test-dir proj/build -C Release --no-tests=error

@@ -1,7 +1,8 @@
-{% if pm %}include(CMakeFindDependencyMacro)
-{% if lib %}
-if(NOT "@BUILD_SHARED_LIBS@")
-  {% end %}find_dependency({% if c %}json-c{% else %}fmt{% end %}){% if lib %}
-endif(){% end %}
+{% if pm %}set({= name =}_FOUND YES)
 
-{% end %}include("${CMAKE_CURRENT_LIST_DIR}/{= name =}Targets.cmake")
+include(CMakeFindDependencyMacro)
+find_dependency({% if c %}json-c{% else %}fmt{% end %})
+
+if({= name =}_FOUND)
+  {% end %}include("${CMAKE_CURRENT_LIST_DIR}/{= name =}Targets.cmake"){% if pm %}
+endif(){% end %}

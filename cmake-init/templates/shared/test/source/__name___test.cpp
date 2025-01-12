@@ -2,16 +2,16 @@
 
 #include "{= name =}/{= name =}.hpp"
 {% if pm %}
-#include <catch2/catch.hpp>
+#include <catch2/catch{% if catch3 %}_test_macros{% end %}.hpp>
 
 TEST_CASE("Name is {= name =}", "[library]")
 {
-  exported_class e;
-  REQUIRE(std::string("{= name =}") == e.name());
+  auto const exported = exported_class {};
+  REQUIRE(std::string("{= name =}") == exported.name());
 }{% else %}
 auto main() -> int
 {
-  exported_class e;
+  auto const exported = exported_class {};
 
-  return std::string("{= name =}") == e.name() ? 0 : 1;
+  return std::string("{= name =}") == exported.name() ? 0 : 1;
 }{% end %}

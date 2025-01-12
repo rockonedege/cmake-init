@@ -4,7 +4,7 @@
   "dependencies": [
     {
       "name": "{% if c %}json-c{% else %}fmt{% end %}",
-      "version>=": "{% if c %}2019-09-10{% else %}8.1.1{% end %}"
+      "version>=": "{% if c %}2023-08-12{% else %}11.0.2#1{% end %}"
     }{% if c and exe %},
     {
       "name": "hedley",
@@ -16,12 +16,15 @@
     "test": {
       "description": "Dependencies for testing",
       "dependencies": [
-        {
+        {% if catch3 %}{
           "name": "catch2",
-          "version>=": "2.13.8"
-        }
+          "version>=": "3.7.1"
+        }{% else %}"catch2"{% end %}
       ]
     }
-  },
-  "builtin-baseline": "5cf60186a241e84e8232641ee973395d4fde90e1"
+  },{% if not catch3 %}
+  "overrides": [
+    { "name": "catch2", "version": "2.13.9#1" }
+  ],{% end %}
+  "builtin-baseline": "d7112d1a4fb50410d3639f5f586972591d848beb"
 }

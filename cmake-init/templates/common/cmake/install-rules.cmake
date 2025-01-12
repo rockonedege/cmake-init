@@ -1,15 +1,20 @@
 {% if not exe %}if(PROJECT_IS_TOP_LEVEL)
-  set(CMAKE_INSTALL_INCLUDEDIR include/{= name =} CACHE PATH "")
+  set(
+      CMAKE_INSTALL_INCLUDEDIR "include/{= name =}-${PROJECT_VERSION}"
+      CACHE STRING ""
+  )
+  set_property(CACHE CMAKE_INSTALL_INCLUDEDIR PROPERTY TYPE PATH)
 endif(){% if header %}
 
 # Project is configured with no languages, so tell GNUInstallDirs the lib dir
 set(CMAKE_INSTALL_LIBDIR lib CACHE PATH ""){% end %}
 
-{% end %}include(CMakePackageConfigHelpers)
+include(CMakePackageConfigHelpers)
 include(GNUInstallDirs)
 
-# find_package(<package>) call for consumers to find this project
-set(package {= name =}){% if not exe %}
+# find_package(<package>) call for consumers to find this project{% if pm %}
+# should match the name of variable set in the install-config.cmake script{% end %}
+set(package {= name =})
 
 install(
     DIRECTORY{% if lib %}
@@ -17,9 +22,9 @@ install(
     "${PROJECT_BINARY_DIR}/export/"{% end %}
     DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}"
     COMPONENT {= name =}_Development
-){% end %}
+)
 
-install(
+{% end %}install(
     TARGETS {= name =}_{% if exe %}exe{% else %}{= name =}
     EXPORT {= name =}Targets{% end %}{% if exe %}
     RUNTIME COMPONENT {= name =}_Runtime{% end %}{% if lib %}
@@ -33,12 +38,7 @@ install(
     INCLUDES #
     DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}"{% end %}{% if header %}
     INCLUDES DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}"{% end %}
-){% if lib and pm %}
-
-configure_file(
-    cmake/install-config.cmake.in "${package}Config.cmake"
-    @ONLY
-){% end %}
+){% if not exe %}
 
 write_basic_package_version_file(
     "${package}ConfigVersion.cmake"
@@ -48,22 +48,21 @@ write_basic_package_version_file(
 
 # Allow package maintainers to freely override the path for the configs
 set(
-    {= name =}_INSTALL_CMAKEDIR "${CMAKE_INSTALL_DATADIR}/${package}"
-    CACHE PATH "CMake package config location relative to the install prefix"
+    {= name =}_INSTALL_CMAKEDIR "{% if lib %}${CMAKE_INSTALL_LIBDIR}/cmake{% else %}${CMAKE_INSTALL_DATADIR}{% end %}/${package}"
+    CACHE STRING "CMake package config location relative to the install prefix"
 )
-mark_as_advanced({= name =}_INSTALL_CMAKEDIR){% if not exe %}{% if not pm or header %}
+set_property(CACHE {= name =}_INSTALL_CMAKEDIR PROPERTY TYPE PATH)
+mark_as_advanced({= name =}_INSTALL_CMAKEDIR)
 
 install(
     FILES cmake/install-config.cmake
     DESTINATION "${{= name =}_INSTALL_CMAKEDIR}"
     RENAME "${package}Config.cmake"
     COMPONENT {= name =}_Development
-){% end %}
+)
 
 install(
-    FILES{% if pm and lib %}
-    "${PROJECT_BINARY_DIR}/${package}Config.cmake"
-   {% end %} "${PROJECT_BINARY_DIR}/${package}ConfigVersion.cmake"
+    FILES "${PROJECT_BINARY_DIR}/${package}ConfigVersion.cmake"
     DESTINATION "${{= name =}_INSTALL_CMAKEDIR}"
     COMPONENT {= name =}_Development
 )
@@ -72,24 +71,6 @@ install(
     EXPORT {= name =}Targets
     NAMESPACE {= name =}::
     DESTINATION "${{= name =}_INSTALL_CMAKEDIR}"
-    COMPONENT {= name =}_Development
-){% else %}
-
-install(
-    FILES "${PROJECT_BINARY_DIR}/${package}ConfigVersion.cmake"
-    DESTINATION "${{= name =}_INSTALL_CMAKEDIR}"
-    COMPONENT {= name =}_Development
-)
-
-# Export variables for the install script to use
-install(CODE "
-set({= name =}_NAME [[$<TARGET_FILE_NAME:{= name =}_exe>]])
-set({= name =}_INSTALL_CMAKEDIR [[${{= name =}_INSTALL_CMAKEDIR}]])
-set(CMAKE_INSTALL_BINDIR [[${CMAKE_INSTALL_BINDIR}]])
-" COMPONENT {= name =}_Development)
-
-install(
-    SCRIPT cmake/install-script.cmake
     COMPONENT {= name =}_Development
 ){% end %}
 

@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.14)
+cmake_minimum_required(VERSION 3.{% if cmake_321 %}21{% else %}14{% end %})
 
 include(cmake/prelude.cmake)
 
@@ -9,8 +9,8 @@ project(
     HOMEPAGE_URL "{= homepage =}"
     LANGUAGES C
 )
-
-include(cmake/project-is-top-level.cmake)
+{% if not cmake_321 %}
+include(cmake/project-is-top-level.cmake){% end %}
 include(cmake/variables.cmake)
 
 # ---- Declare library ----
@@ -44,13 +44,13 @@ set_target_properties(
 target_include_directories(
     {= name =}_{= name =} ${warning_guard}
     PUBLIC
-    "$<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>"
+    "\$<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>"
 )
 
 target_include_directories(
     {= name =}_{= name =} SYSTEM
     PUBLIC
-    "$<BUILD_INTERFACE:${PROJECT_BINARY_DIR}/export>"
+    "\$<BUILD_INTERFACE:${PROJECT_BINARY_DIR}/export>"
 )
 
 target_compile_features({= name =}_{= name =} PUBLIC c_std_{= std =}){% if pm %}

@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.14)
+cmake_minimum_required(VERSION 3.{% if cmake_321 %}21{% else %}14{% end %})
 
 include(cmake/prelude.cmake)
 
@@ -9,8 +9,8 @@ project(
     HOMEPAGE_URL "{= homepage =}"
     LANGUAGES NONE
 )
-
-include(cmake/project-is-top-level.cmake)
+{% if not cmake_321 %}
+include(cmake/project-is-top-level.cmake){% end %}
 include(cmake/variables.cmake)
 
 # ---- Declare library ----
@@ -26,7 +26,7 @@ set_property(
 target_include_directories(
     {= name =}_{= name =} ${warning_guard}
     INTERFACE
-    "$<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>"
+    "\$<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>"
 )
 
 target_compile_features({= name =}_{= name =} INTERFACE c_std_{= std =}){% if pm %}
